@@ -102,3 +102,7 @@ coverage.xml
 
 # User-facing sample audio
 !test_files/sample.wav
+!test_files/speech-us-female.wav
+!test_files/speech-us-male.wav
+!test_files/speech-uk-male.wav
+!test_files/speech-us-female.flac

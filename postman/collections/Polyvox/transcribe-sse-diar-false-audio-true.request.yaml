@@ -1,0 +1,39 @@
+$kind: http-request
+order: 11100
+method: POST
+url: '{{base_url}}/transcribe?format=sse&diarization=false&include_audio=true'
+queryParams:
+- key: format
+  value: sse
+  description: Response transport; every emitted segment is final.
+- key: diarization
+  value: 'false'
+  description: Enable session-local speaker labels; false emits UNKNOWN.
+- key: include_audio
+  value: 'true'
+  description: Attach a base64 mono 16 kHz PCM16 WAV to each structured segment.
+body:
+  type: formdata
+  content:
+  - key: file
+    type: file
+    src: tests/fixtures/jfk.wav
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));\npm.test(\"Streaming content type\"\
+    , () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"text/event-stream\"));\n\
+    pm.test(\"Single-pass combined segments and terminal success\", () => {\n  const events = pm.response.text().split(/\\\
+    r?\\n/).filter(l => l.startsWith(\"data: \")).map(l => JSON.parse(l.slice(6)));\n  pm.expect(events[0].type).to.eql(\"\
+    started\");\n  const segments = events.filter(e => e.type === \"segment\");\n  pm.expect(segments.length).to.be.above(0);\n\
+    \  segments.forEach((e, i) => {\n    pm.expect(e.id).to.eql(i);\n    pm.expect(e.final).to.eql(true);\n\
+    \    pm.expect(e.request_id).to.eql(pm.response.headers.get(\"X-Request-ID\"));\n    pm.expect(e.segment.len).to.be.closeTo(e.segment.end\
+    \ - e.segment.start, 0.000001);\n    pm.expect(e.segment.audio.encoding).to.eql(\"base64\"); pm.expect(e.segment.audio.content_type).to.eql(\"\
+    audio/wav\"); pm.expect(e.segment.audio.data).to.match(/^UklGR/);\n  });\n  pm.expect(segments.every(e\
+    \ => e.segment.speaker === \"UNKNOWN\")).to.eql(true);\n  const complete = events[events.length-1];\n\
+    \  pm.expect(events.some(e => e.type === \"error\")).to.eql(false);\n  pm.expect(complete.type).to.eql(\"\
+    complete\");\n  pm.expect(complete.segment_count).to.eql(segments.length);\n  pm.expect(complete.metadata.single_pass).to.eql(true);\n\
+    \  pm.expect(complete.metadata.diarization).to.eql(false);\n  pm.expect(complete.metadata.include_audio).to.eql(true);\n\
+    \  pm.expect(segments.map(e => e.segment.text).join(\" \").toLowerCase()).to.include(\"country\");\n\
+    });"
+name: SSE / speakers off / audio on

@@ -1,0 +1,18 @@
+$kind: http-request
+order: 9000
+method: POST
+url: '{{base_url}}/transcribe'
+body:
+  type: formdata
+  content:
+  - key: file
+    type: file
+    src: tests/fixtures/jfk.wav
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));\npm.test(\"Text transcription recovers\
+    \ after invalid media\", () => {\n  pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"\
+    text/plain\");\n  pm.expect(pm.response.text().toLowerCase()).to.include(\"country\");\n});\npm.test(\"\
+    Text stream completed\", () => pm.expect(pm.response.text()).to.match(/# complete\\n$/));"
+name: TEXT / speakers off / audio off

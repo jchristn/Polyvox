@@ -1,0 +1,96 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# IDE settings
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Project-specific - audio files
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+*.aac
+*.wma
+*.aiff
+
+# Project-specific - video files
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.webm
+
+# Project-specific - output files
+*.json
+*.txt
+!requirements.txt
+!REQUIREMENTS.md
+!QUESTIONS.md
+!README.md
+!CHANGELOG.md
+!GETTING_STARTED.md
+!ENVIRONMENT_SETUP.md
+
+# Model cache (can be large)
+.cache/
+cache/
+models/
+
+# Data directories
+input/
+output/
+
+# Logs
+*.log
+
+# Environment files
+.env
+
+# Runtime builds and test reports
+.runtime/
+.coverage*
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+!tests/fixtures/*.json
+!openapi.yaml
+!tests/fixtures/jfk.wav
+coverage.xml

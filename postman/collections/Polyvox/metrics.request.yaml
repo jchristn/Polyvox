@@ -1,0 +1,18 @@
+$kind: http-request
+order: 4000
+method: GET
+url: '{{base_url}}/metrics'
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |-
+    pm.test("HTTP 200", () => pm.response.to.have.status(200));
+    pm.test("Service metrics", () => {
+      const body = pm.response.json();
+      pm.expect(body.backend).to.eql("streaming-engine");
+      pm.expect(body.active).to.be.a("boolean");
+      pm.expect(body.completed).to.be.a("number");
+      pm.expect(body.consecutive_failures).to.be.a("number");
+      pm.expect(body.circuit_open).to.be.a("boolean");
+      pm.expect(body.device).to.be.a("string");
+    });

@@ -1,0 +1,25 @@
+services:
+  transcriber-api:
+    image: polyvox-cuda:local
+    build:
+      context: .
+      dockerfile: dockerfile-cuda
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./models:/models:ro
+    environment:
+      API_MODE: "true"
+      API_TOKEN: ${API_TOKEN:-}
+      DEVICE: cuda
+      DIARIZATION: ${DIARIZATION:-false}
+      DIARIZATION_MODEL: ${DIARIZATION_MODEL:-/models/nemotron-diar.gguf}
+      INCLUDE_AUDIO: ${INCLUDE_AUDIO:-false}
+      MODEL_PATH: ${MODEL_PATH:-/models/nemotron-asr.gguf}
+      JOB_TIMEOUT: ${JOB_TIMEOUT:-3600}
+      MAX_DURATION: ${MAX_DURATION:-7200}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-536870912}
+      CPU_FALLBACK: ${CPU_FALLBACK:-false}
+    stop_grace_period: 15s
+    gpus: all

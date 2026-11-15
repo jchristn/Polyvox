@@ -1,0 +1,14 @@
+$kind: http-request
+order: 3000
+method: GET
+url: '{{base_url}}/ready'
+auth:
+  type: noauth
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |-
+    pm.test("HTTP 200", () => pm.response.to.have.status(200));
+    pm.test("Configuration is ready", () => {
+      pm.expect(pm.response.json()).to.deep.equal({status: "ready", scope: "configuration-and-circuit"});
+    });

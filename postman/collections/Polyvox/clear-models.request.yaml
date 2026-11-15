@@ -1,0 +1,12 @@
+$kind: http-request
+order: 11000
+method: POST
+url: '{{base_url}}/clear-models'
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |-
+    pm.test("HTTP 200", () => pm.response.to.have.status(200));
+    pm.test("Models are released after transcription", () => {
+      pm.expect(pm.response.json()).to.deep.equal({status: "ok", message: "No cached models; each job releases its models"});
+    });

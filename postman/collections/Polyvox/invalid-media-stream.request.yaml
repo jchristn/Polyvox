@@ -1,0 +1,27 @@
+$kind: http-request
+order: 8500
+method: POST
+url: '{{base_url}}/transcribe?format=sse'
+queryParams:
+- key: format
+  value: sse
+body:
+  type: formdata
+  content:
+  - key: file
+    type: file
+    src: openapi.yaml
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |-
+    pm.test("Stream headers precede media validation", () => pm.response.to.have.status(200));
+    pm.test("Terminal stream error identifies invalid media", () => {
+      const events = pm.response.text().split(/\r?\n/).filter(l => l.startsWith("data: ")).map(l => JSON.parse(l.slice(6)));
+      const last = events[events.length - 1];
+      pm.expect(last.type).to.eql("error");
+      pm.expect(last.status).to.eql(422);
+      pm.expect(last.error).to.eql("invalid_media");
+      pm.expect(last.request_id).to.eql(pm.response.headers.get("X-Request-ID"));
+      pm.expect(events.some(e => e.type === "complete")).to.eql(false);
+    });

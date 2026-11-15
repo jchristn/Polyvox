@@ -1,0 +1,34 @@
+name: Release server image
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+  publish:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    concurrency:
+      group: polyvox-server-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - name: Sign in to Docker Hub and Build Cloud
+        uses: docker/login-action@v4
+        with:
+          username: jchristn77
+          password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+      - name: Connect Armada's cloud builder
+        uses: docker/setup-buildx-action@v4
+        with:
+          name: cloud-jchristn77-jchristn77
+          driver: cloud
+          endpoint: jchristn77/jchristn77
+      - name: Publish version and latest for both Linux architectures
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: ./build-server.sh "$RELEASE_TAG"

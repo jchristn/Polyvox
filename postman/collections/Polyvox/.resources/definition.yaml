@@ -1,0 +1,35 @@
+$kind: collection
+name: polyvox v1.0 — streaming speech API
+description: 'polyvox v1.0.0 accepts multipart audio/video and emits text, full JSON, JSONL, or SSE. Each
+  final segment contains start/end/len, text, and a speaker label. Set diarization and include_audio independently
+  in query parameters or multipart fields; audio clips are base64 PCM16 WAVs in structured formats only.
+
+
+  This collection checks append-only finalized segments, all diarization/audio combinations for SSE and
+  JSONL, full JSON with audio, text completion markers, request-scoped options, readiness, authentication,
+  invalid-media recovery, and stream errors. Require complete (or # complete for text) before accepting
+  success. Retries happen only before the first published segment.
+
+
+  The default models are Nemotron 3.5 ASR Streaming and Nemotron 3 Diarization, using independently replaceable
+  providers. No Hugging Face token is needed for the bundled model choices. API_TOKEN, when configured,
+  is the service bearer token.
+
+
+  openapi.yaml is the authoritative contract. Run sequentially against an idle local test instance with
+  the bundled JFK fixture; these requests run real inference and call /clear-models. See postman/README.md
+  for setup and verification. No cloud publication is required.'
+variables:
+- key: api_token
+  value: ''
+auth:
+  type: bearer
+  credentials:
+  - key: token
+    value: '{{api_token}}'
+scripts:
+- type: http:afterResponse
+  language: text/javascript
+  code: "pm.test(\"Request ID is present\", () => {\n  pm.expect(pm.response.headers.get(\"X-Request-ID\"\
+    )).to.match(/^[a-f0-9]{32}$/);\n});\npm.test(\"Responses are not cached\", () => {\n  pm.expect(pm.response.headers.get(\"\
+    Cache-Control\")).to.eql(\"no-store\");\n});"

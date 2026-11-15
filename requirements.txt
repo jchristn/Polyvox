@@ -1,0 +1,2 @@
+# Compatibility installer. For reproducible development use: uv sync --locked
+.

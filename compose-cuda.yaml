@@ -1,0 +1,20 @@
+services:
+  transcriber:
+    image: polyvox-cuda:local
+    build:
+      context: .
+      dockerfile: dockerfile-cuda
+    init: true
+    volumes:
+      - ./input:/data/input:ro
+      - ./output:/data/output
+      - ./models:/models:ro
+    environment:
+      DEVICE: cuda
+      DIARIZATION: ${DIARIZATION:-false}
+      DIARIZATION_MODEL: ${DIARIZATION_MODEL:-/models/nemotron-diar.gguf}
+      INCLUDE_AUDIO: ${INCLUDE_AUDIO:-false}
+      MODEL_PATH: ${MODEL_PATH:-/models/nemotron-asr.gguf}
+    healthcheck:
+      disable: true
+    gpus: all

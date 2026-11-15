@@ -1,0 +1,19 @@
+$kind: http-request
+order: 5000
+method: GET
+url: '{{base_url}}/metrics'
+auth:
+  type: noauth
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |-
+    pm.test("Unauthenticated access follows configured token policy", () => {
+      const authenticated = Boolean(pm.variables.get("api_token"));
+      pm.response.to.have.status(authenticated ? 401 : 200);
+      if (authenticated) {
+        const body = pm.response.json();
+        pm.expect(body.error).to.eql("unauthorized");
+        pm.expect(body.request_id).to.eql(pm.response.headers.get("X-Request-ID"));
+      }
+    });

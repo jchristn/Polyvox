@@ -1,0 +1,483 @@
+openapi: 3.1.0
+info:
+  title: polyvox
+  version: 1.0.0
+  description: Single-pass streaming ASR and optional diarization. Text, full JSON,
+    JSONL, and SSE outputs share one engine. Optional inline WAV audio clips. Bearer
+    authentication applies when API_TOKEN is configured.
+servers:
+- url: http://localhost:8000
+paths:
+  /:
+    get:
+      operationId: liveness
+      responses:
+        '200':
+          description: HTTP process is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    const: ok
+    head:
+      operationId: livenessHead
+      responses:
+        '200':
+          description: Alive, empty body
+  /ready:
+    get:
+      operationId: readiness
+      responses:
+        '200':
+          description: Local prerequisites exist and failure circuit is closed; not
+            a GPU/model self-test
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /transcribe:
+    post:
+      operationId: transcribe
+      security:
+      - {}
+      - bearerAuth: []
+      parameters:
+      - name: format
+        in: query
+        schema: &id001
+          type: string
+          enum:
+          - text
+          - json
+          - jsonl
+          - sse
+          default: text
+        description: text is a plain-text stream; json is the completed transcript;
+          jsonl and sse contain events.
+      - name: diarization
+        in: query
+        schema:
+          type: boolean
+        description: Override the server default for this request only.
+      - name: include_audio
+        in: query
+        schema:
+          type: boolean
+        description: Include base64 WAV in each segment; unavailable for text.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                format: *id001
+                diarization:
+                  type: boolean
+                include_audio:
+                  type: boolean
+      responses:
+        '200':
+          description: Selected output format. Streaming responses may terminate with
+            an error event; HTTP 200 alone does not indicate a successful transcription.
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: |
+                [0.0-1.0 SPEAKER_00] Hello
+                # complete
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transcript'
+            text/event-stream:
+              schema:
+                type: string
+                description: 'Stream framing. Each JSON record validates against #/components/schemas/StreamEvent.'
+              example: |+
+                event: segment
+                data: {"type":"segment","id":0,"attempt":1,"final":true,"request_id":"example","segment":{"start":0.0,"end":1.0,"len":1.0,"text":"Hello","speaker":"SPEAKER_00"}}
+
+            application/x-ndjson:
+              schema:
+                type: string
+                description: 'Stream framing. Each JSON record validates against #/components/schemas/StreamEvent.'
+              example: |
+                {"type":"segment","id":0,"attempt":1,"final":true,"request_id":"example","segment":{"start":0.0,"end":1.0,"len":1.0,"text":"Hello","speaker":"SPEAKER_00"}}
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: Body exceeds MAX_UPLOAD_BYTES; server-level rejection may not
+            use JSON
+        '422':
+          description: Invalid media, missing audio stream, or duration exceeds MAX_DURATION
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '504':
+          description: Job exceeded its processing deadline; failed job is not resumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Unexpected internal failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      description: Upload multipart file and optionally format, diarization, and include_audio
+        in the query OR multipart body. Duplicate options are rejected. Text/JSONL/SSE
+        stream finalized combined segments once each; full JSON collects the same
+        segments. Audio is optional base64 WAV and is rejected for text. The entire
+        upload is decoded before the resident streaming engine processes it. Errors
+        after streaming headers are terminal error records inside HTTP 200. No replay
+        or resume.
+  /clear-models:
+    post:
+      operationId: clearModels
+      security:
+      - {}
+      - bearerAuth: []
+      responses:
+        '200':
+          description: No cached models remain; no model is reloaded
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /metrics:
+    get:
+      operationId: metrics
+      security:
+      - {}
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Service state and transcription counters
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - active
+                - completed
+                - consecutive_failures
+                - circuit_open
+                - device
+                - backend
+                properties:
+                  active:
+                    type: boolean
+                  completed:
+                    type: integer
+                    minimum: 0
+                  consecutive_failures:
+                    type: integer
+                    minimum: 0
+                  circuit_open:
+                    type: boolean
+                  device:
+                    type: string
+                  backend:
+                    const: streaming-engine
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    Error:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+        request_id:
+          type: string
+    Transcript:
+      type: object
+      required:
+      - segments
+      - language
+      - metadata
+      - segment_count
+      properties:
+        language:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        segments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Segment'
+        segment_count:
+          type: integer
+          minimum: 0
+    Segment:
+      type: object
+      required:
+      - start
+      - end
+      - len
+      - text
+      - speaker
+      properties:
+        start:
+          type: number
+          minimum: 0
+          description: Start time in seconds.
+        end:
+          type: number
+          minimum: 0
+          description: End time in seconds, at least start.
+        len:
+          type: number
+          minimum: 0
+          description: 'Duration in seconds: end minus start, rounded to millisecond
+            precision.'
+        text:
+          type: string
+        speaker:
+          type: string
+        audio:
+          $ref: '#/components/schemas/Audio'
+    Metadata:
+      type: object
+      required:
+      - backend
+      - asr_provider
+      - diarization_provider
+      - asr_model
+      - diarization_model
+      - device
+      - diarization_device
+      - requested_device
+      - attempts
+      - diarization
+      - include_audio
+      - alignment
+      - single_pass
+      properties:
+        backend:
+          const: streaming-engine
+        asr_provider:
+          type: string
+        diarization_provider:
+          type:
+          - string
+          - 'null'
+        asr_model:
+          type: string
+        diarization_model:
+          type:
+          - string
+          - 'null'
+        device:
+          type: string
+        diarization_device:
+          type:
+          - string
+          - 'null'
+        requested_device:
+          type: string
+        attempts:
+          type: integer
+          minimum: 1
+          maximum: 3
+        diarization:
+          type: boolean
+        include_audio:
+          type: boolean
+        alignment:
+          const: word-timestamps
+        single_pass:
+          const: true
+    StartedEvent:
+      type: object
+      required:
+      - type
+      - request_id
+      properties:
+        type:
+          const: started
+        request_id:
+          type: string
+    HeartbeatEvent:
+      type: object
+      required:
+      - type
+      - request_id
+      properties:
+        type:
+          const: heartbeat
+        request_id:
+          type: string
+    AttemptEvent:
+      type: object
+      required:
+      - type
+      - request_id
+      - attempt
+      - reset
+      - device
+      - requested_device
+      properties:
+        type:
+          const: attempt
+        request_id:
+          type: string
+        attempt:
+          type: integer
+          minimum: 1
+          maximum: 3
+        reset:
+          const: true
+        device:
+          type: string
+          description: Device requested for this attempt; actual backend is validated
+            before completion.
+        requested_device:
+          type: string
+    SegmentEvent:
+      type: object
+      required:
+      - type
+      - request_id
+      - attempt
+      - id
+      - final
+      - segment
+      properties:
+        type:
+          const: segment
+        request_id:
+          type: string
+        attempt:
+          type: integer
+          minimum: 1
+          maximum: 3
+        id:
+          type: integer
+          minimum: 0
+          description: Zero-based append-only segment index. Each ID is emitted exactly
+            once.
+        final:
+          const: true
+          description: Combined segment committed once; successful job completion
+            still requires complete.
+        segment:
+          $ref: '#/components/schemas/Segment'
+    CompleteEvent:
+      type: object
+      required:
+      - type
+      - request_id
+      - segment_count
+      - language
+      - metadata
+      properties:
+        type:
+          const: complete
+        request_id:
+          type: string
+        segment_count:
+          type: integer
+          minimum: 0
+          description: Number of committed segments in the stream.
+        language:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+    ErrorEvent:
+      type: object
+      required:
+      - type
+      - request_id
+      - error
+      - status
+      properties:
+        type:
+          const: error
+        request_id:
+          type: string
+        error:
+          type: string
+        status:
+          type: integer
+          description: Equivalent nonstreaming HTTP status; transport remains 200.
+        detail:
+          type: string
+        retry_after:
+          type: integer
+          minimum: 1
+    StreamEvent:
+      oneOf:
+      - $ref: '#/components/schemas/StartedEvent'
+      - $ref: '#/components/schemas/HeartbeatEvent'
+      - $ref: '#/components/schemas/AttemptEvent'
+      - $ref: '#/components/schemas/SegmentEvent'
+      - $ref: '#/components/schemas/CompleteEvent'
+      - $ref: '#/components/schemas/ErrorEvent'
+    Audio:
+      type: object
+      required:
+      - encoding
+      - content_type
+      - sample_rate
+      - channels
+      - data
+      properties:
+        encoding:
+          const: base64
+        content_type:
+          const: audio/wav
+        sample_rate:
+          const: 16000
+        channels:
+          const: 1
+        data:
+          type: string
+          contentEncoding: base64
+          description: PCM16 LE mono WAV of the normalized source over [start,end).
+            May contain overlapping voices; not speaker-separated.
+  responses:
+    InvalidRequest:
+      description: Missing/empty upload, invalid or duplicate option, or audio requested
+        with text.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Configured bearer token is missing or incorrect
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unavailable:
+      description: Busy, circuit open, invalid configuration, or backend failure
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

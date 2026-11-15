@@ -1,0 +1,38 @@
+$kind: http-request
+order: 10500
+method: POST
+url: '{{base_url}}/transcribe?format=json'
+queryParams:
+- key: format
+  value: json
+  description: Response transport; every emitted segment is final.
+body:
+  type: formdata
+  content:
+  - key: file
+    type: file
+    src: tests/fixtures/jfk.wav
+  - key: diarization
+    type: text
+    value: 'true'
+  - key: include_audio
+    type: text
+    value: 'true'
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));\npm.test(\"Structured transcription\
+    \ and backend metadata\", () => {\n  const body = pm.response.json();\n  pm.expect(body.language).to.match(/^en(?:-|$)/);\n\
+    \  pm.expect(body.segments).to.be.an(\"array\").that.is.not.empty;\n  for (const segment of body.segments)\
+    \ {\n    pm.expect(segment.start).to.be.a(\"number\").and.at.least(0);\n    pm.expect(segment.end).to.be.a(\"\
+    number\").and.at.least(segment.start);\n    pm.expect(segment.len).to.be.closeTo(segment.end - segment.start,\
+    \ 0.000001);\n    pm.expect(segment.text).to.be.a(\"string\");\n    pm.expect(segment.speaker).to.be.a(\"\
+    string\");\n  }\n  pm.expect(body.segments.map(s => s.text).join(\" \").toLowerCase()).to.include(\"\
+    country\");\n  pm.expect(body.metadata.backend).to.eql(\"streaming-engine\");\n  pm.expect(body.metadata.device).to.be.a(\"\
+    string\");\n  pm.expect(body.metadata.requested_device).to.be.a(\"string\");\n  pm.expect(body.metadata.attempts).to.be.a(\"\
+    number\").and.at.least(1);\n  pm.expect(body.metadata.diarization).to.be.a(\"boolean\");\n  pm.expect(body.metadata.alignment).to.eql(\"\
+    word-timestamps\");\n});\npm.test(\"Audio and diarization requested in body\", () => { const b=pm.response.json();\
+    \ pm.expect(b.metadata.diarization).to.eql(true); pm.expect(b.metadata.include_audio).to.eql(true);\
+    \ pm.expect(b.segments.some(s=>s.speaker.startsWith(\"SPEAKER_\"))).to.eql(true); b.segments.forEach(s=>pm.expect(s.audio.data).to.match(/^UklGR/));\
+    \ });"
+name: JSON / speakers on / audio on

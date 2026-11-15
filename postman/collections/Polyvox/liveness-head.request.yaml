@@ -1,0 +1,12 @@
+$kind: http-request
+order: 2000
+method: HEAD
+url: '{{base_url}}/'
+auth:
+  type: noauth
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |-
+    pm.test("HTTP 200", () => pm.response.to.have.status(200));
+    pm.test("Empty HEAD body", () => pm.expect(pm.response.text()).to.eql(""));

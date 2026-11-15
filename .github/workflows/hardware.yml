@@ -1,0 +1,38 @@
+name: Hardware acceptance (manual)
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: Dedicated runner backend
+        required: true
+        type: choice
+        options: [metal, cuda, rocm, vulkan, qualcomm]
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    # Dedicated machines must carry this label and have their SDK/runtime installed.
+    # Never run untrusted PR code automatically on these machines.
+    runs-on: [self-hosted, 'transcriber-${{ inputs.device }}']
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.13.8'
+      - run: uv sync --locked
+      - run: python scripts/download_model.py nemotron-asr
+      - run: python scripts/download_model.py nemotron-diar
+      - run: uv run --no-sync pytest -m hardware
+        env:
+          RUN_HARDWARE: '1'
+          DEVICE: ${{ inputs.device }}
+          MODEL_PATH: models/nemotron-asr.gguf
+          DIARIZATION_MODEL: models/nemotron-diar.gguf
+          # Provision the matching SDK on the runner; no GPU fallback in acceptance tests.
+          NEMO_RUNTIME_DIR: /opt/nemo

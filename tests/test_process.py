@@ -1,11 +1,12 @@
 import os
 import sys
+import threading
 import time
 
 import pytest
 
 from polyvox.errors import BackendFailure, JobTimeout
-from polyvox.process import run_command
+from polyvox.process import JobCancelled, run_command
 
 
 def test_real_process_failure_and_next_success():
@@ -49,6 +50,32 @@ def test_timeout_kills_child_tree(tmp_path):
     assert time.monotonic() - start < 5
     time.sleep(1.5)
     assert not marker.exists()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX process group cleanup")
+@pytest.mark.parametrize("cancelled", [False, True])
+def test_cleanup_does_not_mask_timeout_or_cancellation(monkeypatch, cancelled):
+    killpg = os.killpg
+    signaled = set()
+
+    def signal_once(pid, sig):
+        if pid in signaled:
+            raise PermissionError("Process group has already been killed")
+        signaled.add(pid)
+        killpg(pid, sig)
+
+    monkeypatch.setattr(os, "killpg", signal_once)
+    cancel = threading.Event()
+    if cancelled:
+        cancel.set()
+    with pytest.raises(JobCancelled if cancelled else JobTimeout):
+        run_command(
+            [sys.executable, "-c", "import time; time.sleep(20)"],
+            0.1,
+            isolated=True,
+            cancel=cancel,
+        )
+    assert len(signaled) == 1
 
 
 def test_arguments_not_interpreted_by_shell(tmp_path):

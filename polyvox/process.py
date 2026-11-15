@@ -95,6 +95,7 @@ def _run(args, timeout, isolated, cwd, on_line, cancel, log, reader, errors):
             if len(pending) > 2 * 1024 * 1024:
                 raise BackendFailure("Worker output line exceeds 2 MiB")
 
+    terminated = False
     try:
         while True:
             if cancel is not None and cancel.is_set():
@@ -116,6 +117,7 @@ def _run(args, timeout, isolated, cwd, on_line, cancel, log, reader, errors):
     except BaseException as exc:
         if isolated:
             terminate_tree(process)
+            terminated = True
         else:
             process.kill()
             process.wait()
@@ -124,7 +126,9 @@ def _run(args, timeout, isolated, cwd, on_line, cancel, log, reader, errors):
         raise
     finally:
         # Reap descendants even if the wrapper crashed before its child finished.
-        if isolated and os.name != "nt":
+        # terminate_tree already killed the group and reaped the parent. A second
+        # killpg can fail with EPERM on macOS while only zombie children remain.
+        if isolated and os.name != "nt" and not terminated:
             with contextlib.suppress(ProcessLookupError):
                 os.killpg(process.pid, signal.SIGKILL)
         with _lock:

@@ -10,6 +10,7 @@
 - Isolated workers, bounded queues and output, deadlines, cancellation, circuit recovery,
   and retries before the first published segment.
 - Timestamped request/response logs and warning-level exception tracebacks, including streaming failures.
+- Polyvox HTTP server identity and concise access logs for expected HTTP client errors.
 - Python 3.12–3.14, Linux amd64/arm64 containers, and configurable native accelerators.
 - Checksum-pinned runtime/models, OpenAPI, Postman, automated tests, and CI/release workflows.
 - Server publishing helpers use Docker Build Cloud for amd64/arm64 images tagged with a supplied version and latest.

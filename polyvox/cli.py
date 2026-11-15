@@ -51,6 +51,7 @@ def main(argv=None):
             try:
                 serve(
                     app,
+                    ident="Polyvox",
                     host=os.environ.get("HOST", "127.0.0.1"),
                     port=int(os.environ.get("PORT", "8000")),
                     threads=max(4, settings.max_pending + 3),

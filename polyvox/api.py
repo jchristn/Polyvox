@@ -83,7 +83,8 @@ def create_app(settings: Settings | None = None, service=None) -> Flask:
 
     @app.errorhandler(HTTPException)
     def http_error(exc):
-        logger.warning("Exception encountered:", exc_info=True)
+        if exc.code is None or exc.code >= 500:
+            logger.warning("Exception encountered:", exc_info=True)
         return jsonify(error=exc.name, request_id=g.request_id), exc.code
 
     @app.errorhandler(Exception)
@@ -146,7 +147,6 @@ def create_app(settings: Settings | None = None, service=None) -> Flask:
                 if output_format == "text" and options["include_audio"]:
                     raise ValueError("include_audio requires json, jsonl, or sse")
             except (ValueError, ConfigurationError) as exc:
-                logger.warning("Exception encountered:", exc_info=True)
                 return jsonify(error=str(exc)), 400
             file = request.files.get("file")
             if file is None or not file.filename:

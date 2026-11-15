@@ -390,7 +390,8 @@ def interactive(name, fmt, *, body_options=False):
 def build():
     definition = yaml.safe_load((SOURCE / ".resources/definition.yaml").read_text())
     paths = sorted(
-        SOURCE.glob("*.request.yaml"), key=lambda p: yaml.safe_load(p.read_text())["order"]
+        SOURCE.glob("*.request.yaml"),
+        key=lambda p: (yaml.safe_load(p.read_text())["order"], p.name),
     )
     acceptance = [convert(p) for p in paths]
     health = [copy.deepcopy(item) for item in acceptance[:4]]

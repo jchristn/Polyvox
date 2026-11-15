@@ -1795,6 +1795,40 @@
           "response": []
         },
         {
+          "id": "9d634491-9bcb-51a1-a649-1878108fd3c5",
+          "name": "Clear Models",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/clear-models",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "clear-models"
+              ],
+              "query": []
+            },
+            "description": "### Clear Models\n\nConfirm models are released while idle. Each job releases its own models; active work returns 503. Run against an idle test instance.\n\nThis fixed acceptance case preserves its explicit option values. It uses the environment's base_url, api_token, and fixture/error-file variables. Use **Transcribe your audio** for requests controlled by output_format, diarization, and include_audio. Requests run real inference; run sequentially on a test instance."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Models are released after transcription\", () => {",
+                  "  pm.expect(pm.response.json()).to.deep.equal({status: \"ok\", message: \"No cached models; each job releases its models\"});",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "id": "35fce647-dea0-5da2-b408-82dfd5fedc6b",
           "name": "SSE / speakers off / audio off",
           "request": {
@@ -1868,40 +1902,6 @@
                   "  pm.expect(complete.metadata.diarization).to.eql(false);",
                   "  pm.expect(complete.metadata.include_audio).to.eql(false);",
                   "  pm.expect(segments.map(e => e.segment.text).join(\" \").toLowerCase()).to.include(String(pm.variables.get(\"expected_text\")).toLowerCase());",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "response": []
-        },
-        {
-          "id": "9d634491-9bcb-51a1-a649-1878108fd3c5",
-          "name": "Clear Models",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/clear-models",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "clear-models"
-              ],
-              "query": []
-            },
-            "description": "### Clear Models\n\nConfirm models are released while idle. Each job releases its own models; active work returns 503. Run against an idle test instance.\n\nThis fixed acceptance case preserves its explicit option values. It uses the environment's base_url, api_token, and fixture/error-file variables. Use **Transcribe your audio** for requests controlled by output_format, diarization, and include_audio. Requests run real inference; run sequentially on a test instance."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Models are released after transcription\", () => {",
-                  "  pm.expect(pm.response.json()).to.deep.equal({status: \"ok\", message: \"No cached models; each job releases its models\"});",
                   "});"
                 ]
               }

@@ -51,11 +51,9 @@ speaker update. Short holdback protects turn boundaries before publication.
 
 ## Quick start
 
-Install Python 3.12–3.14 and Docker, then run from this directory:
+Install Docker with Compose, then run from this directory:
 
 ```bash
-python scripts/download_model.py nemotron-asr
-python scripts/download_model.py nemotron-diar
 docker compose up --build
 curl http://localhost:8000/ready
 curl -N -F 'file=@recording.wav' \
@@ -63,7 +61,9 @@ curl -N -F 'file=@recording.wav' \
 ```
 
 Both Linux `amd64` and `arm64/v8` CPU images use the same API. Compose binds to
-localhost. Models are downloaded separately with pinned SHA-256 checksums.
+localhost. Both Dockerfiles install FFmpeg, Python dependencies, the native
+runtime, and the two default models during the build. Model downloads use pinned
+SHA-256 checksums; containers need no model downloads or host model mounts.
 For native installation and acceleration, see [macOS](RUN_ON_MAC.md),
 [Windows](RUN_ON_WINDOWS.md), [Linux](RUN_ON_UBUNTU.md), and [hardware](HARDWARE.md).
 

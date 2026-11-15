@@ -88,7 +88,8 @@ not a promise of reliable labeling in every recording.
 
 ## Both Linux container architectures
 
-Download both default models, then build/run on each architecture:
+Build/run on each architecture; the Dockerfiles download and include both
+models, so no host model setup is needed:
 
 ```bash
 docker build --platform linux/arm64/v8 -f dockerfile-cpu -t transcriber:test-arm64 .
@@ -98,8 +99,11 @@ python scripts/container_smoke.py --image transcriber:test-amd64
 ```
 
 The script starts an isolated non-root container on an ephemeral localhost port,
-checks readiness, rejects corrupt media, and verifies real JSON/SSE/JSONL output
-with diarization and audio, final IDs, durations, and terminal success. Containers
+asserts that the container has no host/volume mounts, checks readiness, rejects
+corrupt media, and verifies real JSON/SSE/JSONL output using the included models
+with diarization and audio, final IDs, durations, and terminal success. A second
+fresh container transcribes and diarizes the fixture with `--network none` and
+no mounts, proving that runtime inference needs no downloads. Containers
 are removed even on failure. QEMU emulation is useful for correctness but not
 performance measurement. For CUDA, build `dockerfile-cuda`, run with `--gpus all`
 on an NVIDIA host, and run real hardware/API acceptance; the CPU smoke script

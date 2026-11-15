@@ -1,12 +1,10 @@
 # Docker setup
 
-Install Python 3.12–3.14 for the download helper and Docker with Compose. Use a
-recent Docker Desktop on macOS/Windows or Docker Engine on Linux. Run from the
+Install Docker with Compose. Use a recent Docker Desktop on macOS/Windows or
+Docker Engine on Linux. No host Python or model installation is required. Run from the
 project directory:
 
 ```bash
-python scripts/download_model.py nemotron-asr
-python scripts/download_model.py nemotron-diar
 docker compose up --build
 curl http://localhost:8000/ready
 curl -N -F 'file=@recording.wav' \
@@ -14,11 +12,14 @@ curl -N -F 'file=@recording.wav' \
 ```
 
 The default CPU image supports Linux amd64 and arm64/v8. CPU Compose files use
-`jchristn77/polyvox-server:v1.0.0`; set `IMAGE_TAG` to select another tag. Models are mounted
-read-only from `models/`; the downloader verifies pinned checksums and readable
-permissions. Models are not bundled in the image. The optional diarization model
-is needed whenever a request enables diarization. Both defaults total about
-849 MB on disk. Download only ASR when diarization is never used.
+`jchristn77/polyvox-server:v1.0.0`; set `IMAGE_TAG` to select another tag.
+Both CPU and CUDA Dockerfiles install all application dependencies, FFmpeg,
+the matching native SDK, and the default ASR and diarization models. The model
+files total about 849 MB and are included in the image, even when diarization
+is disabled for a request. Downloads happen during the build and are verified
+against pinned SHA-256 checksums. A fresh container is ready without a model
+volume, startup downloads, or a Hugging Face token. First builds need network
+access; subsequent builds can reuse the model layer.
 
 Use `docker compose -f compose-cuda-api.yaml up --build` on an NVIDIA host with
 the Container Toolkit and a compatible driver. GPU inference must be validated
@@ -32,14 +33,18 @@ bearer token. For example, read a secret into your environment using your normal
 secret manager; do not put it in a collection or checked-in file. Supply it to
 clients via `Authorization: Bearer <token>`.
 
-Model paths inside containers start with `/models/`. Native host absolute paths
-are not valid container paths. Environment options include `DIARIZATION`,
+The included models live under `/models/`. To use replacements, explicitly
+mount your files read-only at another path (for example `/custom-models`) and
+set `MODEL_PATH` / `DIARIZATION_MODEL` to those container paths. Avoid mounting
+an empty directory over `/models`, which hides the included weights. Native
+host absolute paths are not valid container paths. Environment options include `DIARIZATION`,
 `INCLUDE_AUDIO`, `MODEL_PATH`, `DIARIZATION_MODEL`, `JOB_TIMEOUT`,
 `MAX_UPLOAD_BYTES`, and `MAX_DURATION`; see the Compose files and
 [API reference](REST_API.md). Request flags override diarization/audio defaults.
 Text plus enabled audio is rejected, so use a structured format for clips.
 
-Images use a non-root user (uid 10001). Input/model mounts must be readable;
+Images use a non-root user (uid 10001). The included weights are readable and
+root-owned. Input or custom-model mounts must be readable;
 output mounts must be writable by that user. Models and normalized PCM need
 additional RAM/disk beyond the download size. Set deployment resource limits
 appropriate to your recordings. Use a TLS reverse proxy if exposing the service,
@@ -94,7 +99,7 @@ Both use Armada's existing Docker Build Cloud builder,
 `jchristn77/polyvox-server:latest`. Supplying another tag replaces `v1.0.0` in
 that pair; `latest` is always updated. The helper uses `dockerfile-cpu` with
 `API_MODE=true`, so the published image starts the HTTP server by default.
-Models remain external read-only mounts.
+The two default models are included in the published image.
 
 Sign in with `docker login` using an account authorized for the builder and
 image repository. If this builder is not configured on the machine, connect it

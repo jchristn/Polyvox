@@ -10,7 +10,6 @@ services:
     volumes:
       - ./input:/data/input:ro
       - ./output:/data/output
-      - ./models:/models:ro
     environment:
       API_MODE: "false"
       DEVICE: cpu

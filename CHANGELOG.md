@@ -12,3 +12,4 @@
 - Python 3.12–3.14, Linux amd64/arm64 containers, and configurable native accelerators.
 - Checksum-pinned runtime/models, OpenAPI, Postman, automated tests, and CI/release workflows.
 - Server publishing helpers use Docker Build Cloud for amd64/arm64 images tagged with a supplied version and latest.
+- CPU and CUDA images include all runtime dependencies and both checksum-verified default models; no host model mount is required.

@@ -8,7 +8,6 @@ services:
     volumes:
       - ./input:/data/input:ro
       - ./output:/data/output
-      - ./models:/models:ro
     environment:
       DEVICE: cuda
       DIARIZATION: ${DIARIZATION:-false}

@@ -1,6 +1,9 @@
 FROM python:3.14-slim-trixie
 COPY --from=ghcr.io/astral-sh/uv:0.13.8 /uv /usr/local/bin/uv
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates ffmpeg libgomp1 tini && rm -rf /var/lib/apt/lists/*
+# Download the two default models once at build time, verifying pinned SHA-256 hashes.
+COPY scripts/download_model.py /download_model.py
+RUN python /download_model.py nemotron-asr --directory /models && python /download_model.py nemotron-diar --directory /models
 COPY scripts/install_runtime.py /install_runtime.py
 RUN python /install_runtime.py --device cpu --prefix /opt/nemo
 WORKDIR /app
@@ -8,7 +11,7 @@ COPY pyproject.toml uv.lock README.md ./
 COPY polyvox ./polyvox
 COPY transcriber.py ./
 RUN uv sync --frozen --no-dev --no-editable
-RUN useradd --create-home --uid 10001 transcriber && mkdir -p /models /data/input /data/output && chown -R transcriber:transcriber /app /models /data
+RUN useradd --create-home --uid 10001 transcriber && mkdir -p /models /data/input /data/output && chown -R transcriber:transcriber /app /data
 ARG API_MODE=false
 ENV API_MODE=${API_MODE}
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 HOST=0.0.0.0 NEMO_RUNTIME_DIR=/opt/nemo MODEL_PATH=/models/nemotron-asr.gguf DIARIZATION_MODEL=/models/nemotron-diar.gguf DEVICE=cpu

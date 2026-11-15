@@ -205,6 +205,7 @@ class TranscriptionService:
             except BackendFailure:
                 if published or attempt == settings.retries:
                     raise
+                logging.getLogger("waitress").warning("Exception encountered:", exc_info=True)
                 logger.warning("Backend failed; retrying in a fresh process")
                 if settings.cpu_fallback and settings.device != "cpu":
                     settings = replace(settings, device="cpu")

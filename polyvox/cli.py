@@ -30,6 +30,7 @@ def parser():
 
 
 def main(argv=None):
+    logging.addLevelName(logging.WARNING, "WARN")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     try:
         settings = Settings.from_env()

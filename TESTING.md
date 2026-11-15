@@ -22,6 +22,11 @@ circuit recovery, subprocess-tree cancellation, and atomic output staging.
 Runtime/model download tests verify checksums and failure cleanup. Mock providers
 prove contracts and control flow; they do not prove recognition quality.
 
+`tests/test_access_logging.py` checks request IP/method/URL/body length, response
+statuses for success/authentication/routing failures, unknown-length input without
+reading its body, and full exception chains for JSON and all streaming formats.
+Run `uv run --no-sync pytest tests/test_access_logging.py -v` to focus on logging.
+
 To focus on the model-independent engine and transports:
 
 ```bash

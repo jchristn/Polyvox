@@ -99,3 +99,6 @@ coverage.xml
 !postman/Polyvox.postman_collection.json
 !postman/Polyvox.local.postman_environment.json
 !postman/examples/segment.json
+
+# User-facing sample audio
+!test_files/sample.wav

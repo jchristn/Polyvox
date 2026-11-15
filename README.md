@@ -1,3 +1,5 @@
+![polyvox logo](assets/logo-dark.png)
+
 # polyvox
 
 **v1.0.0 — Initial release.**

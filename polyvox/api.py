@@ -16,7 +16,7 @@ from .errors import BackendFailure, Busy, ConfigurationError, TranscriberError
 from .service import TranscriptionService
 from .streaming import stream_response
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("waitress")
 
 
 def create_app(settings: Settings | None = None, service=None) -> Flask:
@@ -36,6 +36,16 @@ def create_app(settings: Settings | None = None, service=None) -> Flask:
     @app.before_request
     def authenticate():
         g.request_id = uuid.uuid4().hex
+        size = request.content_length
+        if size is None:
+            size = "unknown" if request.environ.get("wsgi.input_terminated") else 0
+        logger.info(
+            "Request received from %s: %s %s %s bytes",
+            request.remote_addr,
+            request.method,
+            request.url,
+            size,
+        )
         if (
             token
             and request.path not in ("/", "/ready")
@@ -50,11 +60,18 @@ def create_app(settings: Settings | None = None, service=None) -> Flask:
     def response_headers(response):
         response.headers["X-Request-ID"] = g.request_id
         response.headers["Cache-Control"] = "no-store"
+        logger.info(
+            "Response sent for %s: %s %s %s",
+            request.remote_addr,
+            request.method,
+            request.url,
+            response.status_code,
+        )
         return response
 
     @app.errorhandler(TranscriberError)
     def service_error(exc):
-        logger.warning("Request %s failed: %s", g.request_id, exc, exc_info=True)
+        logger.warning("Exception encountered:", exc_info=True)
         detail = str(exc)
         if isinstance(exc, (BackendFailure, ConfigurationError)):
             detail = "Backend unavailable; inspect service logs and configuration"
@@ -66,11 +83,12 @@ def create_app(settings: Settings | None = None, service=None) -> Flask:
 
     @app.errorhandler(HTTPException)
     def http_error(exc):
+        logger.warning("Exception encountered:", exc_info=True)
         return jsonify(error=exc.name, request_id=g.request_id), exc.code
 
     @app.errorhandler(Exception)
     def unexpected_error(exc):
-        logger.exception("Request %s failed unexpectedly", g.request_id)
+        logger.warning("Exception encountered:", exc_info=True)
         return jsonify(error="internal_error", request_id=g.request_id), 500
 
     @app.get("/")
@@ -128,6 +146,7 @@ def create_app(settings: Settings | None = None, service=None) -> Flask:
                 if output_format == "text" and options["include_audio"]:
                     raise ValueError("include_audio requires json, jsonl, or sse")
             except (ValueError, ConfigurationError) as exc:
+                logger.warning("Exception encountered:", exc_info=True)
                 return jsonify(error=str(exc)), 400
             file = request.files.get("file")
             if file is None or not file.filename:

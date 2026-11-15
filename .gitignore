@@ -94,3 +94,15 @@ htmlcov/
 !openapi.yaml
 !tests/fixtures/jfk.wav
 coverage.xml
+
+# Importable Postman artifacts and the documented response fixture
+!postman/Polyvox.postman_collection.json
+!postman/Polyvox.local.postman_environment.json
+!postman/examples/segment.json
+
+# User-facing sample audio
+!test_files/sample.wav
+!test_files/speech-us-female.wav
+!test_files/speech-us-male.wav
+!test_files/speech-uk-male.wav
+!test_files/speech-us-female.flac

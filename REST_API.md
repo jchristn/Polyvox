@@ -164,6 +164,35 @@ send multipart POST. Network chunks are not event boundaries. Disable proxy
 response buffering and use suitable idle/request timeouts. See the maintained
 [Python streaming client](examples/README.md) and [Postman checks](postman/README.md).
 
+## Service logs
+
+The server writes timestamped logs to stderr, including one request and one
+response entry for every request reaching the application:
+
+```text
+2026-11-15 08:37:36,139 INFO waitress Request received from 127.0.0.1: POST http://localhost:8000/transcribe?format=sse 48844 bytes
+2026-11-15 08:37:36,140 INFO waitress Response sent for 127.0.0.1: POST http://localhost:8000/transcribe?format=sse 200
+2026-11-15 08:37:36,141 WARN waitress Exception encountered:
+Traceback (most recent call last):
+  ...
+polyvox.errors.BackendFailure: Backend unavailable
+```
+
+The IP is the connection peer; untrusted forwarding headers do not override it.
+The URL includes the query string. Bytes are the declared request body length,
+including multipart overhead, not just the audio file size. An explicit zero
+length reports zero. EOF-terminated inputs without a declared length report
+`unknown` (including bodyless requests when Waitress omits the length).
+Logging does not read or buffer the request body.
+
+The response entry records the HTTP status when response headers are prepared.
+For streaming output, it precedes completion; a 200 entry does not mean inference
+succeeded. Read the terminal event/marker to determine success. Caught exceptions,
+including streaming failures and backend failures being retried, log full
+tracebacks and chained causes at `WARN`. Tracebacks stay in server logs; API error
+responses retain their existing sanitization. Requests rejected by Waitress before
+reaching the application use Waitress's own diagnostics.
+
 ## Errors, safeguards, and limits
 
 Option, authentication, upload, and prerequisite errors before streaming use

@@ -11,7 +11,7 @@ from pathlib import Path
 from .errors import BackendFailure, ConfigurationError, JobTimeout, TranscriberError
 from .process import JobCancelled
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("waitress")
 HEARTBEAT_SECONDS = 5
 BUFFER_EVENTS = 16
 
@@ -81,7 +81,7 @@ class EventStream:
         except JobCancelled:
             pass
         except Exception as exc:
-            logger.warning("Stream %s failed", self.request_id, exc_info=True)
+            logger.warning("Exception encountered:", exc_info=True)
             detail = str(exc)
             if isinstance(exc, (BackendFailure, ConfigurationError)):
                 detail = "Backend unavailable; inspect service logs and configuration"

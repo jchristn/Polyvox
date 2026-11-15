@@ -94,3 +94,8 @@ htmlcov/
 !openapi.yaml
 !tests/fixtures/jfk.wav
 coverage.xml
+
+# Importable Postman artifacts and the documented response fixture
+!postman/Polyvox.postman_collection.json
+!postman/Polyvox.local.postman_environment.json
+!postman/examples/segment.json

@@ -1,82 +1,92 @@
-# polyvox API collection
+# Polyvox for Postman
 
-`collections/Polyvox` is a local Postman v3 collection matching
-[openapi.yaml](../openapi.yaml), with maintained assertions. Import the OpenAPI
-file into the app for exploration; those generated requests do not include the
-collection's custom tests. No workspace publication is needed.
+## Drag-and-drop import
 
-## What this collection exercises
+1. In the Postman desktop app, click **Import** and drag in both files:
+   - [Polyvox.postman_collection.json](Polyvox.postman_collection.json)
+   - [Polyvox.local.postman_environment.json](Polyvox.local.postman_environment.json)
+2. Select **Polyvox - Local** in the environment selector.
+3. Set `base_url` (default `http://127.0.0.1:8000`). If the server requires a bearer
+   token, set the local `api_token` value; the exported token is intentionally empty.
+4. Set **Settings > General > Working directory** to the project root so the
+   bundled file `tests/fixtures/jfk.wav` can be read. Alternatively select your
+   file in **Body > form-data > file**. A file import does not include its audio.
+5. Start Polyvox with `docker compose up --build`, send **Service status > Readiness**,
+   then use **Transcribe your audio**.
 
-The collection is named **polyvox v1.0 — streaming speech API** in Postman.
-Requests are labeled by output format, speaker setting, and audio setting.
-`openapi.yaml` defines the contract; this collection adds runnable examples and
-assertions for the behavior callers depend on.
+These are standard **Collection v2.1 JSON** and **environment JSON** exports.
+You do not need to import YAML, install the CLI, or regenerate requests from
+OpenAPI. The collection includes documentation, request descriptions, saved
+response examples, inherited bearer authentication, and response assertions.
 
-| Requests | Expected behavior |
+## Editable variables
+
+Postman syntax is `{{variable}}` with double braces. The environment supplies:
+
+| Variable | Use |
 | --- | --- |
-| Text | Final caption lines followed by `# complete` |
-| JSON | A full transcript; the body-options example enables speakers and WAV clips |
-| SSE and JSONL | All four combinations of diarization/audio; unique final IDs and terminal success |
-| Invalid media stream | Terminal error after HTTP headers, with no successful completion |
-| Readiness and recovery | Prerequisites, circuit metrics, and successful inference after rejected media |
-| Authentication | Service bearer access when configured; public health endpoints |
+| `base_url` | Local, staging, or production service origin |
+| `api_token` | Service bearer token; empty for an unauthenticated server |
+| `audio_file` | File for your editable transcription requests |
+| `output_format` | `text`, `json`, `jsonl`, or `sse` for the configured-output request |
+| `diarization` | `true` / `false` for speaker labels |
+| `include_audio` | `true` / `false` for base64 WAV clips; text forces false |
+| `fixture_audio_file` | Known speech input for regression checks |
+| `invalid_audio_file` | Intentionally invalid input for error checks |
+| `expected_text` | Expected fixture word in regression checks |
+| `expected_language_prefix` | Expected fixture language in regression checks |
 
-`diarization` and `include_audio` are independent request options. `len` equals
-`end - start` in seconds. Clips contain the normalized source interval, including
-any background or overlapping voices. Segment records arrive finalized;
-consumers do not replace earlier text or wait for a whole-file speaker pass.
-The HTTP input remains an uploaded file; live PCM input is provided by the
-[Python library](../LIBRARY.md).
+Collection defaults also exist; the selected environment takes precedence.
+Use local/private values for credentials and do not re-export real tokens.
+If the app asks you to reselect a local file, use the file picker. Selecting a
+file can replace its variable with a fixed path in that request.
 
-## Run against a local instance
+The collection has **30 requests** in three folders: **Service status**,
+**Transcribe your audio**, and **Acceptance suite**. The first two are for everyday
+use. The 21 acceptance scenarios preserve their option combinations to test the
+contract independently of your exploratory settings. They perform real inference
+and call `/clear-models`, so run them sequentially on an idle test instance.
 
-Install Python dependencies, FFmpeg, the native SDK, and both default models as
-shown in [TESTING.md](../TESTING.md). Start an idle test API from the project root:
+[DOCUMENTATION.md](DOCUMENTATION.md) is embedded in the collection's documentation
+panel. It covers options, formats, segment/audio fields, stream completion,
+authentication, error handling, and recovery. Saved responses show shortened
+single-segment excerpts from actual fixture inference; the WAV clip matches
+that segment. [openapi.yaml](../openapi.yaml) remains the API contract.
+
+## Optional CLI verification
+
+From the project root, with the service running:
 
 ```bash
-export NEMO_RUNTIME_DIR="$PWD/.runtime/nemo"
-export MODEL_PATH="$PWD/models/nemotron-asr.gguf"
-export DIARIZATION_MODEL="$PWD/models/nemotron-diar.gguf"
-export DEVICE=cpu
-export DIARIZATION=false
-export INCLUDE_AUDIO=false
-API_MODE=true uv run --no-sync polyvox
-```
-
-Use PowerShell environment syntax on Windows. The default URL is
-`http://127.0.0.1:8000`. Install a Postman CLI supporting local v3 collections
-(validated with 1.75.0), then run in a second terminal:
-
-```bash
-postman collection lint postman/collections/Polyvox
-postman environment lint postman/environments/local.environment.yaml --fail-severity warning
-postman collection run postman/collections/Polyvox \
-  --environment postman/environments/local.environment.yaml \
+postman collection run postman/Polyvox.postman_collection.json \
+  --environment postman/Polyvox.local.postman_environment.json \
   --working-dir . --no-insecure-file-read \
   --timeout-request 120000 --no-report-events
 ```
 
-The working directory must be the project root so requests can read
-`tests/fixtures/jfk.wav` and `openapi.yaml` (used intentionally as invalid media).
-Let Postman generate the multipart boundary. Override the URL with
-`--env-var base_url=http://127.0.0.1:8001` if needed. Increase timeouts on slow hosts.
+Override a value with `--env-var base_url=http://127.0.0.1:8001` if needed.
+A full run expects **30 requests and 129 passing assertions**.
+Run only the fixed checks with `-i 'Acceptance suite'`. Their expected result is
+21 requests and 93 passing assertions. Repeat with and without server/token
+authentication. Intentional 400/401/422 responses pass when correctly asserted.
+Postman validates the completed stream; pytest separately checks incremental
+emission, cancellation, and backpressure. No cloud publication is required.
 
-Expect **21 requests, 93 passing assertions, zero failures**, and exit code 0.
-Checks cover health, authentication policy, errors, recovery, text completion,
-JSON, all four diarization/audio combinations for SSE and JSONL, body options,
-unique final segment IDs, clip metadata, lengths, and idle model release.
-The collection performs real inference and calls `/clear-models`; run on a test
-instance. Expected 400/401/422 responses count as passing when asserted correctly.
+## Maintaining the exports
 
-For authentication, set `API_TOKEN` on the server and provide the matching
-`api_token` Postman environment variable through a private environment or secret
-mechanism. Keep credentials out of tracked files and command history. The
-collection checks valid bearer access and unauthenticated rejection when a token
-is configured; otherwise the same policy check expects access. Health endpoints
-remain public. Repeat once without and once with authentication.
+The existing `collections/Polyvox` v3 files retain the regression requests and
+scripts; they are internal source files for the export, not the app import.
+`scripts/export_postman.py` combines them with the editable requests, variable
+definitions, documentation, and example fixture. Regenerate both JSON files after
+changing those sources:
 
-`--no-report-events` prevents cloud run reporting. No login, workspace binding,
-publication, or collection synchronization is necessary. CLI 1.75.0 may print
-a login notice while still supporting local runs. Judge results by assertions
-and exit code. Postman reads completed streams; pytest independently checks
-incremental timing, cancellation, retries, process failures, and backpressure.
+```bash
+uv run --no-sync python scripts/export_postman.py
+uv run --no-sync python scripts/export_postman.py --check
+uv run --no-sync pytest tests/test_contract.py -q
+```
+
+Keep credentials out of generated artifacts. The export check and contract tests
+ensure that checked-in JSON remains current and covers the API. Existing v3 CLI
+users may continue running `collections/Polyvox` with
+`environments/local.environment.yaml`; app users should use the two JSON files above.

@@ -111,8 +111,10 @@ is intentionally specific to CPU images.
 
 ## HTTP clients and Postman
 
-Follow [postman/README.md](postman/README.md) to run 21 local requests and 93
-assertions against an idle real service, with and without bearer authentication.
+Import the collection/environment JSON files described in
+[postman/README.md](postman/README.md). The full importable collection runs 30
+requests and 129 assertions; its fixed Acceptance suite runs 21 requests and 93
+assertions. Test with and without bearer authentication against an idle service.
 Run the [Python example](examples/README.md) in SSE and JSONL modes with both flags.
 Postman validates completed responses; pytest separately verifies incremental
 delivery, backpressure, and socket cancellation through Waitress.

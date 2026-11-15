@@ -125,6 +125,15 @@ publishes `jchristn77/polyvox-server:v1.0.0` and `:latest` through
 required; both tags refer to the same build. See [publishing setup](GETTING_STARTED.md#publish-the-server-image)
 for authentication and the distinction between local builds and publication.
 
+## Postman import
+
+Drag [Polyvox.postman_collection.json](postman/Polyvox.postman_collection.json) and
+[Polyvox.local.postman_environment.json](postman/Polyvox.local.postman_environment.json)
+into Postman's **Import** window, then select **Polyvox - Local**. The collection
+includes documented requests, saved responses, and `{{variables}}` for the server,
+authentication, input file, output format, diarization, and audio clips.
+See the [import instructions](postman/README.md) for local file selection.
+
 ## Documentation
 
 - [REST API](REST_API.md), [OpenAPI contract](openapi.yaml), [Postman](postman/README.md)

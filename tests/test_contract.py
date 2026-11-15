@@ -45,6 +45,20 @@ def exported_items(collection):
             yield item
 
 
+def test_postman_export_does_not_depend_on_filesystem_order(monkeypatch):
+    from scripts.export_postman import SOURCE, build
+
+    expected = build()
+    paths = list(SOURCE.glob("*.request.yaml"))
+    glob = Path.glob
+    monkeypatch.setattr(
+        Path,
+        "glob",
+        lambda self, pattern: reversed(paths) if self == SOURCE else glob(self, pattern),
+    )
+    assert build() == expected
+
+
 def test_importable_postman_exports_are_current_and_parameterized():
     import json
     import re

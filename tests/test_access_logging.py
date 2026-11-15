@@ -99,3 +99,26 @@ def test_unknown_streamed_request_size_does_not_read_body(settings, caplog):
     )
     assert response.status_code == 200
     assert access_messages(caplog)[0].endswith("unknown bytes")
+
+
+@pytest.mark.parametrize(
+    "method,path,status",
+    [
+        ("GET", "/api/v1/ws", 404),
+        ("POST", "/api/v1/auth/refresh", 404),
+        ("GET", "/api/v1/notifications/unread-count", 404),
+        ("GET", "/api/v1/me/messaging/unread-count", 404),
+        ("GET", "/transcribe", 405),
+        ("POST", "/transcribe?format=xml", 400),
+    ],
+)
+def test_expected_http_errors_keep_access_logs_without_tracebacks(
+    settings, caplog, method, path, status
+):
+    caplog.set_level(logging.INFO, logger="waitress")
+    response = create_app(settings).test_client().open(path, method=method)
+    assert response.status_code == status
+    assert response.json["error"]
+    assert len(access_messages(caplog)) == 2
+    assert access_messages(caplog)[-1].endswith(f" {status}")
+    assert all(record.exc_info is None for record in caplog.records)
